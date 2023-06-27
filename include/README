@@ -1,0 +1,48 @@
+High performance FFT core written by Guanglin Xu in 2017 when he served 
+as a graduate research assistant at Carnegie Mellon University.
+This open source code corresponds to G. Xu, et al. "Optimizing FFT 
+Resource Efficiency of FPGA using High-level Synthesis", IEEE High 
+Performance Extreme Computing Conference (HPEC), 2017
+
+The FFT core architecture is given by P. Milder, et al. ”Computer 
+Generation of Hardware for Linear Digital Signal Processing Transforms 
+ACM Transactions on Design Automation of Electronic Systems, Vol. 17, 
+No. 2, 2012.
+
+This source code implements a parameterized FFT core using the Pease FFT 
+algorithm. 
+  *power-of-2 sizes (N)
+  *configurable radix (R)
+  *configurable streaming width (SW) (data width of the interface and
+   datapath)
+  *supported data types of floating point and fixed point (Unfornatenly, 
+    the current C testbench only works for fixed point)
+ 
+The configuration can be changed in header.h, some of the tested 
+configurations are:
+  N=64,R=2,SW=2
+  N=256,R=4,SW=4
+  N=1024,R=4,SW=4
+  
+Some legal combinations of the configuration can fail because the design 
+assumes no pipeline hazards. This will become a problem if N/SW is too 
+small to hide the latency of the pipeline. If you want to do a problem 
+size that does not directly work in this code template, you may seek some
+kind of support from the author.
+
+
+Files:
+  pease_fft_test.cpp        The C++ testbench
+  pease_fft.cpp             The HLS code for the FFT core
+  header.h                  The header file
+  twid*                     Twiddle factor lookup tables
+  stride_perm_config.dat    Configurations of the permutation core
+  stride_perm_num_stage.h   Configurations of the permutation core
+  dig_rev_perm_config.dat   Configurations of the permutation core
+  dig_rev_perm_num_stage.h  Configurations of the permutation core
+  README                    This file
+  
+
+Prerequisite: install fftw3 for software functionality reference, then
+ add linker Flags -lfftw3f to "Project Settings" -> "Simulation"
+
