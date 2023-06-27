@@ -1,13 +1,8 @@
-# Vitis Tutorial
+# Vitis FFT testing
 
-This github is an example vector addition kernel.
+This github is for the implementation and testing of various FFT algorithms. The rest of the readme will be updated at a later point.
 
 ## Installation 
-
-```
-git clone https://github.com/pyuvaraj37/vitis_tutorial
-cd vitis_tutorial
-```
 
 ## Host 
 
