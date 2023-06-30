@@ -134,7 +134,7 @@ xclbin: build
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
 $(TEMP_DIR)/krnl.xo: ./src/krnl.cpp 
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k krnl --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<' ./src/pease_fft.cpp
+	$(VPP) $(VPP_FLAGS) -c -k krnl --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<' ./src/cp_fft.cpp
 BINARY_CONTAINER_krnl_OBJS += $(TEMP_DIR)/krnl.xo
 
 $(BUILD_DIR)/krnl.xclbin: $(BINARY_CONTAINER_krnl_OBJS)
