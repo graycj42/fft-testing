@@ -142,6 +142,7 @@ int main(int argc, char** argv) {
             match = false; 
             count++;
         }
+        // std::cout << "INPUT " << i << ": " << a[i] << std::endl;
     }
 
     free(b_sw);

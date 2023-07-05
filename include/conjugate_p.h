@@ -1,20 +1,16 @@
 #ifndef _CONJUGATE_PAIR_H
 #define _CONJUGATE_PAIR_H
 
-#define N 128
+#define N 1024
 
 #include <math.h>
 
 #include <stdint.h>
 
-typedef struct {
-	double real;
-	double imag;
-} complex;
 
-extern "C" {void cpfft_init(complex tw[N/8]);}
-extern "C" {static inline void cpfft_bf4(unsigned s, complex out[N], complex w);}
-extern "C" {void cpfft_dfi(complex in[N], complex out[N], complex twid[N]);}
+extern "C" {void cpfft_init(cmplx_type tw[N/8]);}
+extern "C" {static inline void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w);}
+extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N/8]);}
 
 #define CADD(Z, X, Y)  ({ \
 	(Z).real = (X).real + (Y).real;   \

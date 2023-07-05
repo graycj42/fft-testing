@@ -1,5 +1,6 @@
 #include "ap_int.h"
-#include "conjugate_pair.h"
+#include "header.h"
+#include "conjugate_p.h"
 
 //Compute twiddle factors
 
@@ -7,49 +8,56 @@
 
 
 
-extern "C" void cpfft_init(complex tw[N/8])
+extern "C" void cpfft_init(cmplx_type tw[N/8])
 {
-    complex exp;
+    cmplx_type exp;
     exp.real = 0;
     exp.imag = 0;
+    if(tw){
+        for (unsigned i = 0; i < N/8; i++) {
+            exp.imag = -2 * M_PI * i/N;
+            CEXP(exp, tw[i]);
+        }
+    }
 
-for (unsigned i = 0; i < N/8; i++) {
-    exp.imag = -2 * M_PI * i/N;
-    CEXP(exp, tw[i]);
 }
 
-}
-
-extern "C" {static inline void cpfft_bf4(unsigned s, complex out[N], complex w)
+extern "C" {
+    // #pragma HLS inline
+    static inline void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w)
     {
-        complex a = out[0];
-        complex b = out[s];
-        complex c = out[s*2];
-        complex d = out[s*3];
-        complex conj_w = w;
-        conj_w.imag *= -1;
-        complex wc; 
+        cmplx_type a = out[0];
+        cmplx_type b = out[s];
+        cmplx_type c = out[s*2];
+        cmplx_type d = out[s*3];
+        cmplx_type conj_w;
+        conj_w.real = w.real;
+        conj_w.imag = -1*w.imag;
+        cmplx_type wc; 
         CMUL(wc, w, c);
-        complex conj_wd;
+        cmplx_type conj_wd;
         CMUL(conj_wd, conj_w, d);
         
-        complex cpxsum;
+        cmplx_type cpxsum;
         CADD(cpxsum, wc, conj_wd);
+        //out[0] = a + (w * c + conj(w) * d);
         CADD(out[0], a, cpxsum);
-        
+        //out[s * 2] = a - (w * c + conj(w) * d);
         CSUB(out[s*2], a, cpxsum);
 
         CSUB(cpxsum, wc, conj_wd);
-        CADD_X_IMUL_Y(out[s], b, cpxsum);
-        CSUB_X_IMUL_Y(out[s*3], b, cpxsum);
+        //out[s * 3] = b + I * (w * c - conj(w) * d);
+        CADD_X_IMUL_Y(out[s*3], b, cpxsum);
+        //out[s ] = b - I * (w * c - conj(w) * d);
+        CSUB_X_IMUL_Y(out[s], b, cpxsum);
 
     }
 }
 
 //depth first iterative fft algorithm
-extern "C" {void cpfft_dfi(complex in[N], complex out[N], complex twid[N])
+extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N])
     {
-        unsigned log2_n = __builtin_clz(N);
+        unsigned log2_n = 31 - __builtin_clz(N);
         unsigned r = 32 - log2_n;
         uint32_t p = 0; 
         uint32_t q = 0;
@@ -72,7 +80,7 @@ extern "C" {void cpfft_dfi(complex in[N], complex out[N], complex twid[N])
                 // out[h + 1] = in[i1];
                 out[h + 1].real = in[i1].real;
                 out[h + 1].imag = in[i1].imag;
-                complex one;
+                cmplx_type one;
                 one.real = 1;
                 one.imag = 0;
                 cpfft_bf4(1, out + h - 2, one);
@@ -84,28 +92,30 @@ extern "C" {void cpfft_dfi(complex in[N], complex out[N], complex twid[N])
             //higher stages
             for (unsigned j = 1 + (c & 1); j < c; j += 2) {
                 unsigned s = 1 << j;
-                unsigned r = h2 - 4 * s;
+                unsigned z = h2 - 4 * s;
                 unsigned t = log2_n - j - 2;
 
-                // butterfly blocks
+                // butterfly blocks ------ SOURCE OF CRASH
                 for (unsigned b = 1; b < s / 2; b++) {
                 // w = e^(-2 * M_PI * I * b / s / 4);
-                    complex w = twid[b << t];
-                    complex w_rev;
+                    cmplx_type w = twid[b << t];
+                    cmplx_type w_rev;
                     w_rev.real = -1*w.imag;
                     w_rev.imag = -1*w.real;
                     
-                    cpfft_bf4(s, out + r + b, w);
-                    cpfft_bf4(s, out + r + s - b, w_rev);
+                    cpfft_bf4(s, out + z + b, w);
+                    cpfft_bf4(s, out + z + s - b, w_rev);
                 }
 
-                complex spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4
+                cmplx_type spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4
                 spec_case.real = 1;
                 spec_case.imag = 0;
-                cpfft_bf4(s, out + r, spec_case);
+                //spec_case = 1+0i aka 1
+                cpfft_bf4(s, out + z, spec_case);
                 spec_case.real = M_SQRT1_2;
                 spec_case.imag = -1*M_SQRT1_2;
-                cpfft_bf4(s, out + r + s/2, spec_case);
+                //spec_case = (1-i)*(1/sqrt(2))
+                cpfft_bf4(s, out + z + s/2, spec_case);
             }
 
             /* next input index */
@@ -115,6 +125,5 @@ extern "C" {void cpfft_dfi(complex in[N], complex out[N], complex twid[N])
             q = (q & m1) | m;
             p = (p & m1) | ((m ^ m2) << 1);
         }
-
     }
 }
