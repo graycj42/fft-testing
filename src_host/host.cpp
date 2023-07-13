@@ -92,6 +92,7 @@ int main(int argc, char** argv) {
 
     fftw_destroy_plan(my_plan); fftw_free(in); fftw_free(out);
 
+
     /*====================================================Setting up kernel I/O===============================================================*/
 
     /* INPUT BUFFERS */
@@ -135,7 +136,7 @@ int main(int argc, char** argv) {
     printf("Computation : %lf ms\n",  1000.0 * comp/CLOCKS_PER_SEC);
     
     bool match = true;
-    int count = 0; 
+    int count = 0;
     for (int i = 0; i < DATA_SIZE; i++) {
         std::cout << "HW: " << b_hw[i] << " vs " << "SW: " << b_sw[i] << std::endl;
         if (round(b_hw[i]) != round(b_sw[i])){
@@ -147,5 +148,10 @@ int main(int argc, char** argv) {
 
     free(b_sw);
     std::cout << "TEST " << (match ? "PASSED" : "FAILED") << " count: " << count << std::endl;
+    /*=======================TWIDDLE FACTOR VERIFICATION=======================================================================================*/
+
+    // for (int i = 0; i < DATA_SIZE/4; i+=2) {
+    //     std::cout << "real: " << b_hw[i] << "  imag: " << b_hw[i+1] << std::endl;
+    // }
     return (match ? EXIT_SUCCESS : EXIT_FAILURE);
 }

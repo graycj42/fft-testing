@@ -4,13 +4,19 @@
 #define N 1024
 
 #include <math.h>
-
 #include <stdint.h>
 
+typedef struct {
+	double real;
+	double imag;
+} cmplx_type;
 
-extern "C" {void cpfft_init(cmplx_type tw[N/8]);}
-extern "C" {static inline void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w);}
+
+extern "C" {void cpfft_init(cmplx_type tw[]);}
+extern "C" {void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w);}
 extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N/8]);}
+int clz(unsigned x);
+
 
 #define CADD(Z, X, Y)  ({ \
 	(Z).real = (X).real + (Y).real;   \
