@@ -1,4 +1,5 @@
 #include "constants.h"
+#include "conjugate_p.h"
 
 extern "C" {
     void krnl(data_t* a, data_t* b) {
@@ -13,13 +14,23 @@ extern "C" {
             fft_in[i].real = a[i];
             fft_in[i].imag = 0.0;
         }
-
+        
         // pease_fft(fft_in, fft_out);
         cpfft_dfi(fft_in, fft_out, twid);
-
+        
         for (int i = 0; i < DATA_SIZE; i++) {
             b[i] = fft_out[i].real;
             //b[i] = fft_out[i].imag;
         }
+
+        /***********TWIDDLE FACTOR INITIALIZATION TESTING**********/
+        // int j = 0;
+        // for(int i = 0; i < DATA_SIZE/8; i++){
+        //     b[j] = twid[i].real;
+        //     b[j+1] = twid[i].imag;
+        //     // b[j] = i;
+        //     // b[j+1] = i+1;
+        //     j+=2;
+        // }
     }
 }

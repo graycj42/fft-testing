@@ -1,31 +1,30 @@
-#include "ap_int.h"
-#include "header.h"
+// #include "header.h"
+#include "constants.h"
 #include "conjugate_p.h"
 
+
+
+
 //Compute twiddle factors
-
-
-
-
-
-extern "C" void cpfft_init(cmplx_type tw[N/8])
-{
-    cmplx_type exp;
-    exp.real = 0;
-    exp.imag = 0;
-    if(tw){
+extern "C" {
+    void cpfft_init(cmplx_type tw[])
+    {
+        #pragma HLS inline
+        cmplx_type exp;
+        exp.real = 0;
+        exp.imag = 0;
         for (unsigned i = 0; i < N/8; i++) {
             exp.imag = -2 * M_PI * i/N;
             CEXP(exp, tw[i]);
         }
-    }
 
+    }
 }
 
 extern "C" {
-    // #pragma HLS inline
-    static inline void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w)
+    void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w)
     {
+        #pragma HLS inline
         cmplx_type a = out[0];
         cmplx_type b = out[s];
         cmplx_type c = out[s*2];
@@ -58,16 +57,22 @@ extern "C" {
 extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N])
     {
         unsigned log2_n = 31 - __builtin_clz(N);
+        // unsigned log2_n = 31 - clz(N);
         unsigned r = 32 - log2_n;
         uint32_t p = 0; 
         uint32_t q = 0;
 
         //mapping input to output indices
-        for(uint32_t h, h2 = 0; h < N; h = h2){
+        uint32_t h = 0;
+        // unsigned test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
+        // unsigned k = 0;
+        for(uint32_t h2 = 0; h < N; h = h2){
 
             //generate the binary carry sequence
             h2 = h + 2;
             unsigned c = 30 - __builtin_clz(h ^ h2);
+            // k++;
+            // unsigned c = 30 - clz(h ^ h2);
 
             /* input indices */
             unsigned i0 = (p - q) >> r;
@@ -95,7 +100,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                 unsigned z = h2 - 4 * s;
                 unsigned t = log2_n - j - 2;
 
-                // butterfly blocks ------ SOURCE OF CRASH
+                //butterfly blocks ------ SOURCE OF CRASH
                 for (unsigned b = 1; b < s / 2; b++) {
                 // w = e^(-2 * M_PI * I * b / s / 4);
                     cmplx_type w = twid[b << t];
