@@ -28,8 +28,6 @@ extern "C" {
         for (unsigned i = 0; i < N/8; i++) {
             exp.imag = -2 * M_PI * i/N;
             CEXP(exp, tw[i]);
-            // tw[i].real = 15;
-            // tw[i].imag = 26.5;
         }
 
     }
@@ -144,9 +142,5 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             q = (q & m1) | m;
             p = (p & m1) | ((m ^ m2) << 1);
         }
-
-        // for(int i = 0; i<N; i++){
-        //     out[i].real = 1;
-        // }
     }
 }
