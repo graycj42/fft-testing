@@ -1,23 +1,11 @@
 // #include "header.h"
 #include "constants.h"
 #include "conjugate_p.h"
+
+
+
+
 //Compute twiddle factors
-
-
-// This uses a binary search (counting down) algorithm, I am unsure about its efficiency
-int clz(unsigned x)
-{
-   unsigned y;
-   int n = 32;
-   y = x >>16;  if (y != 0) {n = n -16;  x = y;}
-   y = x >> 8;  if (y != 0) {n = n - 8;  x = y;}
-   y = x >> 4;  if (y != 0) {n = n - 4;  x = y;}
-   y = x >> 2;  if (y != 0) {n = n - 2;  x = y;}
-   y = x >> 1;  if (y != 0) return n - 2;
-   return n - x;
-}
-
-
 extern "C" {
     void cpfft_init(cmplx_type tw[])
     {
