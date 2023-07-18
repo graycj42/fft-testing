@@ -76,8 +76,9 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             /* input indices */
             uint32_t i0 = (p - q) >> r;
             uint32_t i1 = i0 ^ (N >> 1);
-
+            uint32_t j;
             if (c & 1) { // stage 1
+                j = 2;
                 // out[h ] = in[i0];
                 out[h].real = in[i0].real;
                 out[h].imag = in[i0].imag;
@@ -88,38 +89,42 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                 one.real = 1;
                 one.imag = 0;
                 cpfft_bf4(1, out + h - 2, one);
-            } else { // stage 0
+            } else { 
+                j = 1;
+                // stage 0
                 CADD(out[h], in[i0], in[i1]);
                 CSUB(out[h + 1], in[i0], in[i1]);
             }
 
             //higher stages
-            for (uint32_t j = 1 + (c & 1); j < c; j += 2) {
-                uint32_t s = 1 << j;
-                uint32_t z = h2 - 4 * s;
-                uint32_t t = log2_n - j - 2;
+            for (j; j < 9; j += 2) {
+                if(j < c){
+                    uint32_t s = 1 << j;
+                    uint32_t z = h2 - 4 * s;
+                    uint32_t t = log2_n - j - 2;
 
-                //butterfly blocks ------ SOURCE OF CRASH
-                for (uint32_t b = 1; b < s / 2; b++) {
-                // w = e^(-2 * M_PI * I * b / s / 4);
-                    cmplx_type w = twid[b << t];
-                    cmplx_type w_rev;
-                    w_rev.real = -1*w.imag;
-                    w_rev.imag = -1*w.real;
-                    
-                    cpfft_bf4(s, out + z + b, w);
-                    cpfft_bf4(s, out + z + s - b, w_rev);
+                    //butterfly blocks ------ SOURCE OF CRASH
+                    for (uint32_t b = 1; b < s / 2; b++) {
+                    // w = e^(-2 * M_PI * I * b / s / 4);
+                        cmplx_type w = twid[b << t];
+                        cmplx_type w_rev;
+                        w_rev.real = -1*w.imag;
+                        w_rev.imag = -1*w.real;
+                        
+                        cpfft_bf4(s, out + z + b, w);
+                        cpfft_bf4(s, out + z + s - b, w_rev);
+                    }
+
+                    cmplx_type spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4
+                    spec_case.real = 1;
+                    spec_case.imag = 0;
+                    //spec_case = 1+0i aka 1
+                    cpfft_bf4(s, out + z, spec_case);
+                    spec_case.real = M_SQRT1_2;
+                    spec_case.imag = -1*M_SQRT1_2;
+                    //spec_case = (1-i)*(1/sqrt(2))
+                    cpfft_bf4(s, out + z + s/2, spec_case);
                 }
-
-                cmplx_type spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4
-                spec_case.real = 1;
-                spec_case.imag = 0;
-                //spec_case = 1+0i aka 1
-                cpfft_bf4(s, out + z, spec_case);
-                spec_case.real = M_SQRT1_2;
-                spec_case.imag = -1*M_SQRT1_2;
-                //spec_case = (1-i)*(1/sqrt(2))
-                cpfft_bf4(s, out + z + s/2, spec_case);
             }
 
             /* next input index */
