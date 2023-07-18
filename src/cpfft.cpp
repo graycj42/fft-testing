@@ -65,11 +65,11 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
         //mapping input to output indices
         // uint32_t test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
         // uint32_t k = 0;
-        for(uint32_t h = 0; h < N; h += 2){
+        outer_loop : for(uint32_t h = 0; h < N; h += 2){
 
             //generate the binary carry sequence
             uint32_t h2 = h + 2;
-            uint32_t c = 30 - __builtin_clz(h ^ h2);
+            // uint32_t c = 30 - __builtin_clz(h ^ h2);
             // k++;
             // uint32_t c = 30 - clz(h ^ h2);
 
@@ -77,7 +77,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             uint32_t i0 = (p - q) >> r;
             uint32_t i1 = i0 ^ (N >> 1);
             uint32_t j;
-            if (c & 1) { // stage 1
+            if (carry[h/2] & 1) { // stage 1
                 j = 2;
                 // out[h ] = in[i0];
                 out[h].real = in[i0].real;
@@ -97,14 +97,14 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             }
 
             //higher stages
-            for (j; j < 9; j += 2) {
-                if(j < c){
+            inner_loop : for (j; j < 9; j += 2) {
+                if(j < carry[h/2]){
                     uint32_t s = 1 << j;
                     uint32_t z = h2 - 4 * s;
                     uint32_t t = log2_n - j - 2;
 
                     //butterfly blocks ------ SOURCE OF CRASH
-                    for (uint32_t b = 1; b < s / 2; b++) {
+                    butterfly_loop : for (uint32_t b = 1; b < s / 2; b++) {
                     // w = e^(-2 * M_PI * I * b / s / 4);
                         cmplx_type w = twid[b << t];
                         cmplx_type w_rev;
@@ -128,7 +128,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             }
 
             /* next input index */
-            uint32_t m2 = 0x20000000 >> c;
+            uint32_t m2 = 0x20000000 >> carry[h/2];
             uint32_t m1 = m2 - 1;
             uint32_t m = p & m2;
             q = (q & m1) | m;
