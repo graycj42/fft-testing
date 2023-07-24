@@ -22,9 +22,11 @@ extern "C" {
 }
 
 extern "C" {
-    void cpfft_bf4(uint32_t s, cmplx_type out[N], cmplx_type w)
+    void cpfft_bf4(uint32_t s, cmplx_type out[N], cmplx_type w, cmplx_type write_only[4])
     {
-        #pragma HLS inline
+        // #pragma HLS inline
+        // #pragma HLS pipeline
+        #pragma HLS DATAFLOW
         cmplx_type a = out[0];
         cmplx_type b = out[s];
         cmplx_type c = out[s*2];
@@ -40,16 +42,15 @@ extern "C" {
         cmplx_type cpxsum;
         CADD(cpxsum, wc, conj_wd);
         //out[0] = a + (w * c + conj(w) * d);
-        CADD(out[0], a, cpxsum);
+        CADD(write_only[0], a, cpxsum);
         //out[s * 2] = a - (w * c + conj(w) * d);
-        CSUB(out[s*2], a, cpxsum);
+        CSUB(write_only[2], a, cpxsum);
 
         CSUB(cpxsum, wc, conj_wd);
         //out[s * 3] = b + I * (w * c - conj(w) * d);
-        CADD_X_IMUL_Y(out[s*3], b, cpxsum);
+        CADD_X_IMUL_Y(write_only[3], b, cpxsum);
         //out[s ] = b - I * (w * c - conj(w) * d);
-        CSUB_X_IMUL_Y(out[s], b, cpxsum);
-
+        CSUB_X_IMUL_Y(write_only[1], b, cpxsum);
     }
 }
 
@@ -61,14 +62,15 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
         uint32_t r = 32 - log2_n;
         uint32_t p = 0; 
         uint32_t q = 0;
-
+        uint32_t h2 = 0;
+        cmplx_type bf4_write[4];
         //mapping input to output indices
         // uint32_t test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
         // uint32_t k = 0;
         outer_loop : for(uint32_t h = 0; h < N; h += 2){
-            #pragma HLS loop_tripcount min=512 max=512 
+            #pragma HLS loop_tripcount min=512 max=512
             //generate the binary carry sequence
-            uint32_t h2 = h + 2;
+            h2 = h + 2;
             // uint32_t c = 30 - __builtin_clz(h ^ h2);
             // k++;
             // uint32_t c = 30 - clz(h ^ h2);
@@ -88,7 +90,11 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                 cmplx_type one;
                 one.real = 1;
                 one.imag = 0;
-                cpfft_bf4(1, out + h - 2, one);
+                cpfft_bf4(1, out + h - 2, one, bf4_write);
+                out[h-2] = bf4_write[0];
+                out[h-1] = bf4_write[1];
+                out[h]   = bf4_write[2];
+                out[h+1] = bf4_write[3];
             } else { 
                 j = 1;
                 // stage 0
@@ -111,19 +117,35 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                         w_rev.real = -1*w.imag;
                         w_rev.imag = -1*w.real;
                         
-                        cpfft_bf4(s, out + z + b, w);
-                        cpfft_bf4(s, out + z + s - b, w_rev);
+                        cpfft_bf4(s, out + z + b, w, bf4_write);
+                        out[z + b]       = bf4_write[0];
+                        out[z + b + s]   = bf4_write[1];
+                        out[z + b + s*2] = bf4_write[2];
+                        out[z + b + s*3] = bf4_write[3];
+                        cpfft_bf4(s, out + z + s - b, w_rev, bf4_write);
+                        out[z - b + s]   = bf4_write[0];
+                        out[z - b + s*2] = bf4_write[1];
+                        out[z - b + s*3] = bf4_write[2];
+                        out[z - b + s*4] = bf4_write[3];
                     }
 
                     cmplx_type spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4
                     spec_case.real = 1;
                     spec_case.imag = 0;
                     //spec_case = 1+0i aka 1
-                    cpfft_bf4(s, out + z, spec_case);
+                    cpfft_bf4(s, out + z, spec_case, bf4_write);
+                    out[z]       = bf4_write[0];
+                    out[z + s]   = bf4_write[1];
+                    out[z + s*2] = bf4_write[2];
+                    out[z + s*3] = bf4_write[3];
                     spec_case.real = M_SQRT1_2;
                     spec_case.imag = -1*M_SQRT1_2;
                     //spec_case = (1-i)*(1/sqrt(2))
-                    cpfft_bf4(s, out + z + s/2, spec_case);
+                    cpfft_bf4(s, out + z + s/2, spec_case, bf4_write);
+                    out[z + s/2]       = bf4_write[0];
+                    out[z + s/2 + s]   = bf4_write[1];
+                    out[z + s/2 + s*2] = bf4_write[2];
+                    out[z + s/2 + s*3] = bf4_write[3];
             }
             
 
