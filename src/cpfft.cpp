@@ -26,31 +26,35 @@ extern "C" {
     {
         // #pragma HLS inline
         // #pragma HLS pipeline
-        #pragma HLS DATAFLOW
-        cmplx_type a = out[0];
-        cmplx_type b = out[s];
-        cmplx_type c = out[s*2];
-        cmplx_type d = out[s*3];
+        #pragma HLS pipeline
+        #pragma HLS array_partition variable=out
+
+        cmplx_type compute[4];
+        for(uint8_t i = 0; i<4; i++){
+            #pragma HLS unroll
+            compute[i].real = out[s*i].real;
+            compute[i].imag = out[s*i].imag;
+        }
         cmplx_type conj_w;
         conj_w.real = w.real;
         conj_w.imag = -1*w.imag;
         cmplx_type wc; 
-        CMUL(wc, w, c);
+        CMUL(wc, w, compute[2]);
         cmplx_type conj_wd;
-        CMUL(conj_wd, conj_w, d);
+        CMUL(conj_wd, conj_w, compute[3]);
         
         cmplx_type cpxsum;
         CADD(cpxsum, wc, conj_wd);
         //out[0] = a + (w * c + conj(w) * d);
-        CADD(write_only[0], a, cpxsum);
+        CADD(write_only[0], compute[0], cpxsum);
         //out[s * 2] = a - (w * c + conj(w) * d);
-        CSUB(write_only[2], a, cpxsum);
+        CSUB(write_only[2], compute[0], cpxsum);
 
         CSUB(cpxsum, wc, conj_wd);
         //out[s * 3] = b + I * (w * c - conj(w) * d);
-        CADD_X_IMUL_Y(write_only[3], b, cpxsum);
+        CADD_X_IMUL_Y(write_only[3], compute[1], cpxsum);
         //out[s ] = b - I * (w * c - conj(w) * d);
-        CSUB_X_IMUL_Y(write_only[1], b, cpxsum);
+        CSUB_X_IMUL_Y(write_only[1], compute[1], cpxsum);
     }
 }
 
