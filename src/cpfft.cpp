@@ -69,6 +69,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
         // uint32_t k = 0;
         outer_loop : for(uint32_t h = 0; h < N; h += 2){
             #pragma HLS loop_tripcount min=512 max=512
+            #pragma HLS pipeline
             //generate the binary carry sequence
             h2 = h + 2;
             // uint32_t c = 30 - __builtin_clz(h ^ h2);
@@ -105,13 +106,17 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
             //higher stages
             inner_loop : for (j; j < carry[h/2]; j += 2) {
                     #pragma HLS loop_tripcount min=1 max=9 avg=2
+                    #pragma HLS pipeline
                     uint32_t s = 1 << j;
                     uint32_t z = h2 - 4 * s;
                     uint32_t t = log2_n - j - 2;
                     //butterfly blocks ------ SOURCE OF CRASH
                     butterfly_loop : for (uint32_t b = 1; b < s / 2; b++) {
                     // w = e^(-2 * M_PI * I * b / s / 4);
+
                         #pragma HLS loop_tripcount min=1 max=127 avg=3
+                        #pragma HLS pipeline
+
                         cmplx_type w = twid[b << t];
                         cmplx_type w_rev;
                         w_rev.real = -1*w.imag;
