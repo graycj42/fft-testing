@@ -27,9 +27,10 @@ extern "C" {
         // #pragma HLS inline
         // #pragma HLS pipeline
         #pragma HLS pipeline
-        #pragma HLS array_partition variable=out
 
         cmplx_type compute[4];
+        #pragma HLS array_partition variable=compute
+
         for(uint8_t i = 0; i<4; i++){
             #pragma HLS unroll
             compute[i].real = out[s*i].real;
@@ -68,6 +69,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
         uint32_t q = 0;
         uint32_t h2 = 0;
         cmplx_type bf4_write[4];
+        // #pragma HLS array_partition variable=bf4_write
         //mapping input to output indices
         // uint32_t test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
         // uint32_t k = 0;

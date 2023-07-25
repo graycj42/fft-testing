@@ -7,6 +7,7 @@ extern "C" {
         #pragma HLS INTERFACE m_axi port = b bundle = gmem1
 
         cmplx_type fft_in[DATA_SIZE], fft_out[DATA_SIZE];
+        #pragma HLS array_reshape variable=fft_out type=complete
         cmplx_type twid[DATA_SIZE/8];
         cpfft_init(twid);
 
