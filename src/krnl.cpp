@@ -1,12 +1,14 @@
 #include "constants.h"
 #include "conjugate_p.h"
+#include <hls_vector.h>
 
 extern "C" {
     void krnl(data_t* a, data_t* b) {
         #pragma HLS INTERFACE m_axi port = a bundle = gmem0
         #pragma HLS INTERFACE m_axi port = b bundle = gmem1
 
-        cmplx_type fft_in[DATA_SIZE], fft_out[DATA_SIZE];
+        hls::vector<cmplx_type, DATASIZE> fft_in;
+        hls::vector<cmplx_type, DATASIZE> fft_out;
         cmplx_type twid[DATA_SIZE/8];
         cpfft_init(twid);
 

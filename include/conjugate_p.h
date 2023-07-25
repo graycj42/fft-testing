@@ -1,10 +1,11 @@
 #ifndef _CONJUGATE_PAIR_H
 #define _CONJUGATE_PAIR_H
 
-#define N 1024
+#define DATASIZE 1024
 
 #include <math.h>
 #include <stdint.h>
+#include <hls_vector.h>
 
 typedef struct {
 	double real;
@@ -13,10 +14,8 @@ typedef struct {
 
 
 extern "C" {void cpfft_init(cmplx_type tw[]);}
-extern "C" {void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w, cmplx_type write_only[4]);}
-extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N/8]);}
-int clz(unsigned x);
-
+extern "C" {void cpfft_bf4(unsigned s, hls::vector<cmplx_type, DATASIZE> out, uint32_t offset, cmplx_type w, cmplx_type write_only[4]);}
+extern "C" {void cpfft_dfi(hls::vector<cmplx_type, DATASIZE>& in, hls::vector<cmplx_type, DATASIZE>& out, cmplx_type twid[DATASIZE/8]);}
 
 #define CADD(Z, X, Y)  ({ \
 	(Z).real = (X).real + (Y).real;   \

@@ -13,8 +13,8 @@ extern "C" {
         cmplx_type exp;
         exp.real = 0;
         exp.imag = 0;
-        for (uint32_t i = 0; i < N/8; i++) {
-            exp.imag = -2 * M_PI * i/N;
+        for (uint32_t i = 0; i < DATASIZE/8; i++) {
+            exp.imag = -2 * M_PI * i/DATASIZE;
             CEXP(exp, tw[i]);
         }
 
@@ -22,18 +22,20 @@ extern "C" {
 }
 
 extern "C" {
-    void cpfft_bf4(uint32_t s, cmplx_type out[N], cmplx_type w, cmplx_type write_only[4])
+    void cpfft_bf4(unsigned s, hls::vector<cmplx_type, DATASIZE> out, uint32_t offset, cmplx_type w, cmplx_type write_only[4])
     {
         // #pragma HLS inline
         // #pragma HLS pipeline
         #pragma HLS pipeline
-        #pragma HLS array_partition variable=out
+        #pragma HLS array_partition variable=write_only
 
         cmplx_type compute[4];
+        #pragma HLS array_partition variable=compute
+
         for(uint8_t i = 0; i<4; i++){
             #pragma HLS unroll
-            compute[i].real = out[s*i].real;
-            compute[i].imag = out[s*i].imag;
+            compute[i].real = out[offset + s*i].real;
+            compute[i].imag = out[offset + s*i].imag;
         }
         cmplx_type conj_w;
         conj_w.real = w.real;
@@ -59,19 +61,22 @@ extern "C" {
 }
 
 //depth first iterative fft algorithm
-extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N])
+extern "C" {void cpfft_dfi(hls::vector<cmplx_type, DATASIZE>& in, hls::vector<cmplx_type, DATASIZE>& out, cmplx_type twid[DATASIZE/8])
     {
-        uint32_t log2_n = 31 - __builtin_clz(N);
+
+
+        uint32_t log2_n = 31 - __builtin_clz(DATASIZE);
         // uint32_t log2_n = 31 - clz(N);
         uint32_t r = 32 - log2_n;
         uint32_t p = 0; 
         uint32_t q = 0;
         uint32_t h2 = 0;
         cmplx_type bf4_write[4];
+        #pragma HLS array_partition variable=bf4_write
         //mapping input to output indices
         // uint32_t test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
         // uint32_t k = 0;
-        outer_loop : for(uint32_t h = 0; h < N; h += 2){
+        outer_loop : for(uint32_t h = 0; h < DATASIZE; h += 2){
             #pragma HLS loop_tripcount min=512 max=512
             #pragma HLS pipeline
             //generate the binary carry sequence
@@ -82,7 +87,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
 
             /* input indices */
             uint32_t i0 = (p - q) >> r;
-            uint32_t i1 = i0 ^ (N >> 1);
+            uint32_t i1 = i0 ^ (DATASIZE >> 1);
             uint32_t j;
             if (carry[h/2] & 1) { // stage 1
                 j = 2;
@@ -95,7 +100,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                 cmplx_type one;
                 one.real = 1;
                 one.imag = 0;
-                cpfft_bf4(1, out + h - 2, one, bf4_write);
+                cpfft_bf4(1, out, h - 2, one, bf4_write);
                 out[h-2] = bf4_write[0];
                 out[h-1] = bf4_write[1];
                 out[h]   = bf4_write[2];
@@ -126,12 +131,12 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                         w_rev.real = -1*w.imag;
                         w_rev.imag = -1*w.real;
                         
-                        cpfft_bf4(s, out + z + b, w, bf4_write);
+                        cpfft_bf4(s, out, z + b, w, bf4_write);
                         out[z + b]       = bf4_write[0];
                         out[z + b + s]   = bf4_write[1];
                         out[z + b + s*2] = bf4_write[2];
                         out[z + b + s*3] = bf4_write[3];
-                        cpfft_bf4(s, out + z + s - b, w_rev, bf4_write);
+                        cpfft_bf4(s, out, z + s - b, w_rev, bf4_write);
                         out[z - b + s]   = bf4_write[0];
                         out[z - b + s*2] = bf4_write[1];
                         out[z - b + s*3] = bf4_write[2];
@@ -142,7 +147,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                     spec_case.real = 1;
                     spec_case.imag = 0;
                     //spec_case = 1+0i aka 1
-                    cpfft_bf4(s, out + z, spec_case, bf4_write);
+                    cpfft_bf4(s, out, z, spec_case, bf4_write);
                     out[z]       = bf4_write[0];
                     out[z + s]   = bf4_write[1];
                     out[z + s*2] = bf4_write[2];
@@ -150,7 +155,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                     spec_case.real = M_SQRT1_2;
                     spec_case.imag = -1*M_SQRT1_2;
                     //spec_case = (1-i)*(1/sqrt(2))
-                    cpfft_bf4(s, out + z + s/2, spec_case, bf4_write);
+                    cpfft_bf4(s, out, z + s/2, spec_case, bf4_write);
                     out[z + s/2]       = bf4_write[0];
                     out[z + s/2 + s]   = bf4_write[1];
                     out[z + s/2 + s*2] = bf4_write[2];
