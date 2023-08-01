@@ -25,8 +25,9 @@ extern "C" {
     void cpfft_bf4(uint32_t s, cmplx_type out[N], cmplx_type w, cmplx_type write_only[4])
     {
         // #pragma HLS inline
-        // #pragma HLS pipeline
-        #pragma HLS pipeline
+        #pragma HLS pipeline II=1
+        #pragma HLS INTERFACE mode=bram port=out storage_type=ram_t2p
+        #pragma HLS array_reshape variable=out type=block factor=N/2
 
         cmplx_type compute[4];
         #pragma HLS array_partition variable=compute
@@ -62,17 +63,23 @@ extern "C" {
 //depth first iterative fft algorithm
 extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N])
     {
+        #pragma HLS INTERFACE mode=bram port=out storage_type=ram_t2p
+        #pragma HLS array_reshape variable=out type=block factor=N/2
+        #pragma HLS INTERFACE mode=bram port=in storage_type=ram_t2p
+        #pragma HLS INTERFACE mode=bram port=twid storage_type=ram_t2p
+        #pragma HLS array_reshape variable=in type=block factor=N/2
+        #pragma HLS array_reshape variable=twid type=block factor=N/16
+
         uint32_t log2_n = 31 - __builtin_clz(N);
-        // uint32_t log2_n = 31 - clz(N);
+
         uint32_t r = 32 - log2_n;
         uint32_t p = 0; 
         uint32_t q = 0;
         uint32_t h2 = 0;
         cmplx_type bf4_write[4];
-        // #pragma HLS array_partition variable=bf4_write
+        #pragma HLS array_partition variable=bf4_write
+
         //mapping input to output indices
-        // uint32_t test_array[32] = {0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5};
-        // uint32_t k = 0;
         outer_loop : for(uint32_t h = 0; h < N; h += 2){
             #pragma HLS loop_tripcount min=512 max=512
             #pragma HLS pipeline
@@ -121,7 +128,7 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                     // w = e^(-2 * M_PI * I * b / s / 4);
 
                         #pragma HLS loop_tripcount min=1 max=127 avg=3
-                        #pragma HLS pipeline
+                       #pragma HLS dataflow
 
                         cmplx_type w = twid[b << t];
                         cmplx_type w_rev;
@@ -129,15 +136,16 @@ extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[
                         w_rev.imag = -1*w.real;
                         
                         cpfft_bf4(s, out + z + b, w, bf4_write);
-                        out[z + b]       = bf4_write[0];
-                        out[z + b + s]   = bf4_write[1];
-                        out[z + b + s*2] = bf4_write[2];
-                        out[z + b + s*3] = bf4_write[3];
+
+                        for(uint8_t i = 0; i<4; i++){
+                            #pragma HLS unroll
+                            out[z + b + s*i]  = bf4_write[i];
+                        }
                         cpfft_bf4(s, out + z + s - b, w_rev, bf4_write);
-                        out[z - b + s]   = bf4_write[0];
-                        out[z - b + s*2] = bf4_write[1];
-                        out[z - b + s*3] = bf4_write[2];
-                        out[z - b + s*4] = bf4_write[3];
+                        for(uint8_t i = 0; i<4; i++){
+                            #pragma HLS unroll
+                            out[z - b + s*(i+1)]  = bf4_write[i];
+                        }
                     }
 
                     cmplx_type spec_case; //From what I understand, these cover specific twiddle factor scenarios, i.e. 2k pi and k pi/4

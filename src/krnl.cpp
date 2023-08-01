@@ -7,8 +7,16 @@ extern "C" {
         #pragma HLS INTERFACE m_axi port = b bundle = gmem1
 
         cmplx_type fft_in[DATA_SIZE], fft_out[DATA_SIZE];
-        #pragma HLS array_reshape variable=fft_out type=complete
+        #pragma HLS bind_storage variable=fft_out type=ram_t2p impl=bram
+        #pragma HLS array_reshape variable=fft_out type=block factor=N/2
+        #pragma HLS bind_storage variable=fft_in type=ram_t2p impl=bram
+        #pragma HLS array_reshape variable=fft_in type=block factor=N/2
+
+
         cmplx_type twid[DATA_SIZE/8];
+        // #pragma HLS bind_storage variable=twid type=ram_t2p impl=bram
+        #pragma HLS array_reshape variable=twid type=block factor=N/16
+
         cpfft_init(twid);
 
         for (int i = 0; i < DATA_SIZE; i++) {

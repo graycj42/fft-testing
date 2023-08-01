@@ -11,7 +11,6 @@ typedef struct {
 	double imag;
 } cmplx_type;
 
-
 extern "C" {void cpfft_init(cmplx_type tw[]);}
 extern "C" {void cpfft_bf4(unsigned s, cmplx_type out[N], cmplx_type w, cmplx_type write_only[4]);}
 extern "C" {void cpfft_dfi(cmplx_type in[N], cmplx_type out[N], cmplx_type twid[N/8]);}
